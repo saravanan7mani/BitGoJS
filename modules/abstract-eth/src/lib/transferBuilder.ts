@@ -1,7 +1,7 @@
 import * as ethUtil from 'ethereumjs-util';
 import EthereumAbi from 'ethereumjs-abi';
 import BN from 'bn.js';
-import { coins, BaseCoin, ContractAddressDefinedToken } from '@bitgo/statics';
+import { coins, BaseCoin, ContractAddressDefinedToken, EthereumNetwork as EthLikeNetwork } from '@bitgo/statics';
 import { BuildTransactionError, InvalidParameterValueError } from '@bitgo/sdk-core';
 import { decodeTransferData, sendMultiSigData, sendMultiSigTokenData, isValidEthAddress, isValidAmount } from './utils';
 
@@ -17,6 +17,9 @@ export class TransferBuilder {
   private _data: string;
   private _tokenContractAddress?: string;
   private _coin: Readonly<BaseCoin>;
+  private _network: EthLikeNetwork;
+  private _nativeCoinOperationHashPrefix?: string;
+  private _tokenOperationHashPrefix?: string;
 
   constructor(serializedData?: string) {
     if (serializedData) {
@@ -30,17 +33,23 @@ export class TransferBuilder {
   }
 
   /**
-   * A method to set the ERC20 token to be transferred.
+   * A method to set the native coin or ERC20 token to be transferred.
    * This ERC20 token may not be compatible with the network.
    *
-   * @param {string} coin the ERC20 coin to be set
+   * @param {string} coin the native coin or ERC20 token to be set
    * @returns {TransferBuilder} the transfer builder instance modified
    */
   coin(coin: string): TransferBuilder {
     this._coin = coins.get(coin);
+    this._network = this._coin.network as EthLikeNetwork;
+    console.log('this._network', this._network);
+    this._nativeCoinOperationHashPrefix = this._network.nativeCoinOperationHashPrefix;
 
     if (this._coin instanceof ContractAddressDefinedToken) {
+      console.log('coin is a token', this._network);
       this._tokenContractAddress = this._coin.contractAddress.toString();
+      this._tokenOperationHashPrefix = this._network.tokenOperationHashPrefix;
+      console.log('this._tokenOperationHashPrefix', this._tokenOperationHashPrefix);
     }
 
     return this;
@@ -137,11 +146,14 @@ export class TransferBuilder {
 
   protected getOperationData(): (string | Buffer)[][] {
     let operationData;
+    console.log('coming in getoperation data', this._tokenOperationHashPrefix);
+    console.log('coming in getoperation data2', this._nativeCoinOperationHashPrefix);
+
     if (this._tokenContractAddress !== undefined) {
       operationData = [
         ['string', 'address', 'uint', 'address', 'uint', 'uint'],
         [
-          this.getTokenOperationHashPrefix(),
+          this._tokenOperationHashPrefix,
           new BN(ethUtil.stripHexPrefix(this._toAddress), 16),
           this._amount,
           new BN(ethUtil.stripHexPrefix(this._tokenContractAddress), 16),
@@ -153,7 +165,7 @@ export class TransferBuilder {
       operationData = [
         ['string', 'address', 'uint', 'bytes', 'uint', 'uint'],
         [
-          this.getNativeOperationHashPrefix(),
+          this._nativeCoinOperationHashPrefix,
           new BN(ethUtil.stripHexPrefix(this._toAddress), 16),
           this._amount,
           Buffer.from(ethUtil.padToEven(ethUtil.stripHexPrefix(this._data)) || '', 'hex'),

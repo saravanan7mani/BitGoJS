@@ -14,6 +14,7 @@ describe('Eth send multi sig builder', function () {
   describe('should build', () => {
     it('native coin transfer should succeed', async () => {
       const builder = new TransferBuilder()
+        .coin('teth')
         .expirationTime(1590078260)
         .amount(amount)
         .to(toAddress)
@@ -39,6 +40,7 @@ describe('Eth send multi sig builder', function () {
 
     it('native coin transfer with sequenceId zero should succeed', async () => {
       const builder = new TransferBuilder()
+        .coin('teth')
         .expirationTime(1590078260)
         .amount(amount)
         .to(toAddress)
@@ -51,6 +53,7 @@ describe('Eth send multi sig builder', function () {
 
     it('native coin transfer with amount 0 should succeed', async () => {
       const builder = new TransferBuilder()
+        .coin('teth')
         .expirationTime(1590078260)
         .amount('0')
         .to(toAddress)
